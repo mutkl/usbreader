@@ -1,0 +1,387 @@
+#include <../functions.C>
+#include "Riostream.h"
+#include "TString.h"
+#include "iostream"
+#include "sstream"
+#include <time.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+
+void convert_data_to_root() {
+//  Read data from an ascii file and create a root file with an histogram and an ntuple.
+
+
+  // create lock file (for viewer to check)
+  ofstream lockfile_;
+  string lockfile_name="__converter_lock_file";
+  lockfile_.open(lockfile_name.c_str());
+  lockfile_ << " converter active " << endl;
+  lockfile_.close();
+
+
+  TString dir = gSystem->UnixPathName(gInterpreter->GetCurrentMacroName());
+  dir.ReplaceAll("read_data.C","");
+  dir.ReplaceAll("/./","/");
+
+
+  // initialize a bunch of parameters
+  static int NUM_CHANNELS=32;
+  // (n channels) * (n boards) = 32 * 4 = 128
+  static const int LARGE_NUMBER=128;
+  static const int MAX_N_FILES=5000;
+  bool print = (bool)(read_parameter_from_file("params.inp","print",lockfile_name)); // print verbose
+  double NUM_BOARDS = read_parameter_from_file("data_params.txt", "NUM_BOARDS",lockfile_name);
+  int NUM_ALL_CHANNELS=(int)(NUM_BOARDS+0.5)*NUM_CHANNELS;
+  size_t n_packets_per_file = (size_t)(read_parameter_from_file("params.inp","n_packets_per_file",lockfile_name)+0.5);
+  double mintime=999999999999999999.;
+  double maxtime=0.;
+  double minpn=99999999999999999.;
+  double maxpn=0.;
+  size_t i_file=0;
+  size_t linec = 0;
+  std::string lineData;
+  size_t old_evn=0;
+  size_t nsignals=0;
+  std::vector<double> row;
+  ifstream in;
+  int in_number = 0;
+  bool good_in=true;
+  string fnum, fname;
+  // important: expected data structure
+  // evn, boardaddress, packetnumber, type, time
+  size_t n_variables_before_channels=5; 
+
+  // initialize root structures
+  int _nsignals;
+  int _packet_number[LARGE_NUMBER];
+  bool _type[LARGE_NUMBER];
+  int _event_number[LARGE_NUMBER];
+  int _board_address[LARGE_NUMBER];
+  double _time[LARGE_NUMBER];
+  size_t _channels[LARGE_NUMBER];
+
+  size_t filenumber=0;
+  string sfilenumber=get_file_number(filenumber,lockfile_name);
+  string fname = "coincidence_data_"+sfilenumber+".root";
+  TFile *f = new TFile(fname.c_str(),"RECREATE");
+  string snumbnext;
+  string fnamenext;
+  
+  TTree *data_tree = new TTree("data_tree","ntuple of data");
+  data_tree->Branch("nsignals",&_nsignals,"nsignals/I");
+  data_tree->Branch("event_number",&(_event_number[0]),"event_number[128]/I");
+  data_tree->Branch("packet_number",&(_packet_number[0]),"packet_number[128]/I");
+  data_tree->Branch("type",&(_type[0]),"type[128]/O");
+  data_tree->Branch("board_address",&(_board_address[0]),"board_address[128]/I");
+  data_tree->Branch("time",&(_time[0]),"time[128]/D");
+  data_tree->Branch("channels",&(_channels[0]),"channels[128]/I");
+
+
+  // loop on input txt files
+  bool ok = true;
+  while(ok){
+ 
+    // if next input txt file is not there, quit
+    // otherwise open it
+    fnum=get_file_number(in_number,lockfile_name);
+    fname="coincidence_data_"+fnum+".txt";
+    snumbnext = get_file_number(in_number+1,lockfile_name);
+    fnamenext = "coincidence_data_"+snumbnext+".txt";
+    if( gSystem->AccessPathName( fname.c_str() ) ||  gSystem->AccessPathName( fnamenext.c_str() ) ) {
+
+      string asker="converter";
+      string commandname="./select";
+      cout << asker << " needs file " << fname << " or the next, but it's not there yet, check if " << commandname << " is running " << endl;
+
+      bool running=true;
+      bool good;
+      while(running){
+	running=is_program_running(asker.c_str(), commandname.c_str());
+	good = !gSystem->AccessPathName( fname.c_str() ) && !gSystem->AccessPathName( fnamenext.c_str() );
+	if( good ) break;
+      }
+      
+      if( !running ){
+	clog << asker << " will stop " << endl;
+	ok=false;
+      }
+
+    }
+    in.open(fname.c_str());
+    if (!in.good()){
+      in.close();
+      break;
+    }
+    //    cout << " converter opening file " << fname << endl;
+
+    // delete already processed files
+    if( in_number > 2 ){
+      string fnumprev=get_file_number(in_number-2,lockfile_name);
+      string fnameprev="coincidence_data_"+fnumprev+".txt";
+      if (!gSystem->AccessPathName( fnameprev.c_str() )) {
+	delete_file(fnameprev);
+      }
+    }
+
+    // read input txt file
+    while (getline(in, lineData)) {
+      if (!in.good()){
+	in.close();
+	break;
+      }
+      linec++;
+      
+      // read one signal
+      double local_d;
+      row.clear();
+      std::stringstream lineStream(lineData);
+      while(lineStream >> local_d ){
+	row.push_back(local_d);
+      }
+      if( !lineStream.eof() ){
+	cout << "problem: no eof" << endl;
+	remove(lockfile_name.c_str());
+	exit(0);
+      }
+      if( row.size() < n_variables_before_channels ){
+	cout << " problem: row size is " << row.size() << endl;
+	remove(lockfile_name.c_str());
+	exit(0);
+      }
+      if( print ){
+	clog << " line " << linec << " ev " << row[0] << " b " <<  (size_t)binaryToBase10((int)(row[1] + 0.5)) << " t " << setprecision(20) << row[3] << " nc " << row.size() - n_variables_before_channels << endl;
+      }
+      
+
+      // if the new signal belongs to a new event
+      // write all accumulated signals to one event
+      if( (size_t)(row[0] + 0.5) != old_evn ){
+	if( print ){
+	  clog << " writing nsignals " << _nsignals << endl;;
+	  for(size_t i=0; i<10; i++){
+	    clog << " evn " << _event_number[i] <<  " b " << _board_address[i] << " p " << _packet_number[i] << " t " << _time[i] << " c " << _channels[i] << endl;
+	  }
+	}
+	i_file ++;
+	data_tree->Fill();
+	nsignals=0;
+	for(size_t i=0; i<LARGE_NUMBER; i++){
+	  _event_number[i] = 0;
+	  _board_address[i] = 0;
+	  _packet_number[i] = 0;
+	  _type[i] = false;
+	  _time[i] = 0;
+	  _channels[i]=0;
+	  _nsignals=0;
+	  nsignals=0;
+	}
+      }
+      
+      
+      // load signal into root variables
+      for(size_t i=n_variables_before_channels; i<row.size(); i++){
+	_event_number[nsignals] = (size_t)(row[0] + 0.5);
+	_board_address[nsignals] = (size_t)binaryToBase10((int)(row[1] + 0.5));
+	_packet_number[nsignals] = (size_t)(row[2] + 0.5);
+	_type[nsignals] = (bool)row[3];
+	_time[nsignals] = row[4];
+	_channels[nsignals]=NUM_CHANNELS*_board_address[nsignals]+(size_t)(row[i]+0.5);
+	if( print ){
+	  clog << " reading evn " << _event_number[nsignals] <<  " b " << _board_address[nsignals] << " p " << _packet_number[nsignals] << " t " << _time[nsignals] << " c " << _channels[nsignals] << endl;
+	}
+	
+	if( maxpn < row[2] ) maxpn = row[2];
+	if( minpn > row[2] ) minpn = row[2];
+	if( row[4] < mintime ) mintime=row[4];
+	if( row[4] > maxtime ) maxtime=row[4];
+	
+	nsignals ++;
+	_nsignals=nsignals;
+	
+      }
+      
+      old_evn=(size_t)(row[0] + 0.5);
+
+      // write into new root file
+      if( i_file >= n_packets_per_file ){
+	f->Write();
+	f->Close();
+	delete f;
+	filenumber ++;
+	sfilenumber=get_file_number(filenumber,lockfile_name);
+	fname = "coincidence_data_"+sfilenumber+".root";
+	f = new TFile(fname.c_str(),"RECREATE");
+	data_tree = new TTree("data_tree","ntuple of data");
+	data_tree->Branch("nsignals",&_nsignals,"nsignals/I");
+	data_tree->Branch("event_number",&(_event_number[0]),"event_number[128]/I");
+	data_tree->Branch("packet_number",&(_packet_number[0]),"packet_number[128]/I");
+	data_tree->Branch("type",&(_type[0]),"type[128]/O");
+	data_tree->Branch("board_address",&(_board_address[0]),"board_address[128]/I");
+	data_tree->Branch("time",&(_time[0]),"time[128]/D");
+	data_tree->Branch("channels",&(_channels[0]),"channels[128]/I");
+	i_file = 0;
+      }
+      
+    } // end of reading txt file
+
+    in.close();
+    in_number ++;
+  } // end of looping on txt files
+  
+
+  // store min time, max time, min pknumber, max pknumber for future plotting
+  ofstream data_params_file;
+  data_params_file.open("data_params.txt",ios_base::out | ios_base::app);
+  data_params_file << " mintime " << mintime << endl;
+  data_params_file << " maxtime " << maxtime << endl;
+  data_params_file << " minpn " << minpn << endl;
+  data_params_file << " maxpn " << maxpn << endl;
+  data_params_file.close();
+
+  // save root file
+  data_tree->Fill();
+  f->Write();
+  f->Close();
+  
+   
+  remove(lockfile_name.c_str());
+  exit(0);
+
+
+}
+
+
+int binaryToBase10(int n)
+{
+  int output = 0;
+
+  int m = 1;
+
+  for(int i=0; n > 0; i++) {
+
+    if(n % 10 == 1) {
+      output += m;
+    }
+    n /= 10;
+    m <<= 1;
+  }
+
+  return output;
+}
+
+
+float read_parameter_from_file(string filename, string paramname, string lockfile_name){
+
+  FILE * pFile = fopen (filename.c_str(),"r");
+
+  char name[256];
+  float value;
+
+  while( EOF != fscanf(pFile, "%s %e", name, &value) ){
+    if( paramname.compare(name) == 0 ){
+      return value;
+    }
+  }
+
+  cout << " warning: could not find parameter " << paramname << " in file " << filename << endl;
+
+  remove(lockfile_name.c_str());
+  exit(0);
+
+  return 0.;
+
+
+}
+
+
+
+string get_file_number(size_t i, string lockfilename){
+  
+  size_t limit = 6;
+  string numb=int_to_string((int)i);
+  if( numb.size() > limit ){
+    clog << " problem: file number " << i << " exceeds limit " << endl;
+    remove(lockfile_name.c_str());
+    exit(0);
+  }
+  size_t n_extra_zeros=6-numb.size();
+  string output="";
+  for(size_t i=0; i<n_extra_zeros; i++)
+    output += '0';
+  return output+numb;
+  
+}
+
+  string int_to_string(int i){
+    char c[20];
+    sprintf(c,"%d",i);
+    string sval(c);
+    return sval;
+  }
+
+
+  void wait ( double seconds )
+  {
+    clock_t endwait;
+    endwait = clock () + seconds * 1e6 ;
+    while (clock() < endwait) {}
+  }
+
+void delete_file(string filename){
+
+  TString path = gDirectory->pwd();
+  string strpath=path;
+  const char spath[80]=strpath.c_str();
+  strcat(spath, filename.c_str());
+  unlink(spath);
+
+  return;
+}
+
+string get_current_dir(){
+
+  char cCurrentPath[100];
+  
+  if (!getcwd(cCurrentPath, sizeof(cCurrentPath) / sizeof(char)))
+    {
+      return 0;
+    }
+  
+  cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+  
+  string answer=cCurrentPath;
+
+  return answer;
+  
+}
+
+
+
+bool is_program_running(string asker, string commandname){
+  // Check if process is running via command-line
+  
+  //  clog << asker << " is checking if " << commandname << " is running " << endl;
+  
+  char child[100]; 
+  char die[100];	
+
+  string name1="pidof -x ";
+  string name2=" > /dev/null ";
+  // Check if process is running via command-line
+
+  strcpy (child, name1.c_str());
+  strcat (child, commandname.c_str());
+  strcat (child, name2.c_str());
+
+  // loop to execute kill
+  if(0 == system(child)) {
+    //    clog << commandname << " is running, so " << asker << " will hold on " << endl; fflush(stdout);
+    return true;
+  }
+
+  return false;
+}
+  
+  

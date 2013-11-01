@@ -1,0 +1,8 @@
+window 0.5e-9
+delay 0
+timeout 1000
+print 0
+n_packets_to_read_together 1.
+n_packets_per_file 20.
+n_coincidences 2
+pattern 0

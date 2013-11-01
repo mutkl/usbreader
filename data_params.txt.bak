@@ -1,0 +1,5 @@
+ NUM_BOARDS 2
+ window 5e-08
+ delay 2.8e-07
+ board 000000
+ channel 3

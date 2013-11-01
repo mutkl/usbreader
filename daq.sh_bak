@@ -1,0 +1,51 @@
+
+threshold=Thzero.asd.dat
+
+ echo " what threshold file should we use? "
+ echo " (default) Thzero.asd.dat "
+ ls Th*dat
+
+ read a
+ if [ "$a" != "Y" ] && [ "$a" != "y" ] && [ "$a" != "" ]
+ then
+     threshold=$a
+ fi
+
+ echo " threshold file: " $threshold
+
+ 
+environ="sudo env LD_LIBRARY_PATH=/home/nova/root/lib:/usr/lib/:/usr/local/lib/:/usr/lib/:/usr/local/lib/"
+
+for command in './MapFEBs'     './FEBConfig'     './mda'     'cat'  ; do
+
+echo ""
+echo " I will do " $command
+echo "continue? [Y/n]"
+read a
+if [ "$a" != "Y" ] && [ "$a" != "y" ] && [ "$a" != "" ]
+then
+    exit
+fi
+
+if [ "$command" == "./MapFEBs" ]
+then
+    $environ $command
+fi
+if [ "$command" == "./FEBConfig" ]
+then
+    $environ $command $threshold
+fi
+if [ "$command" == "./mda" ]
+then
+    $environ $command --start --geom ../../recon/npd_2_v2.det.dat --asd $threshold --forcestart 
+fi
+if [ "$command" == "cat" ]
+then
+    $command  /tmp/mdi.log
+fi
+
+
+done
+
+
+
