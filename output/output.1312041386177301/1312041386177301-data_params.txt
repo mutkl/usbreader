@@ -1,3 +1,0 @@
- NUM_BOARDS 2
-dev1   000001
-dev0   000000
