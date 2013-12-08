@@ -69,8 +69,13 @@ void convert_data_to_display() {
     b_channels->GetEvent(ient);
 
     //output_list << "\n";
+    std::cout << "output_list << _event_number[0]: " << _event_number[0] << std::endl;    
     output_list << _event_number[0];
+    std::cout << "_nsignals: " << _nsignals << std::endl;
+    //for(size_t is=0; is<_nsignals; is++){
     for(size_t is=0; is<_nsignals; is++){
+      std::cout << "is: " << is << std::endl;
+      std::cout << "_nchannels_per_event[is]: " << _nchannels_per_event[is] << std::endl;
       for(size_t ich=0; ich<_nchannels_per_event[is]; ich++){
 	output_list << "," << _channels[is][ich];
       }

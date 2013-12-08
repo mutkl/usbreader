@@ -1,4 +1,3 @@
-
 #define intro
 intro(){
 echo "************************"
@@ -54,7 +53,7 @@ output_flag="$(date +%y%m%d%s)"
 
  intro
 
- echo " how many events? (default= " $default_nevents ")"
+ echo " how many events? (default= " $default_nevents ", -1 for all events)"
 
 # get number of events
  read_n_events
@@ -63,7 +62,7 @@ output_flag="$(date +%y%m%d%s)"
  
 # loop on commands to execute
  #for command in './setup_daq' './acquire.sh' './select'     'root -l convert_data_to_root.C'  'root -l viewer.C'   'root -l analyze_data.C' ; do
- for command in './setup_daq' './acquire.sh' './select'     'root -l convert_data_to_root.C'; do
+ for command in './setup_daq' './run.sh'; do
 
 
      # decide on next step
@@ -97,46 +96,13 @@ output_flag="$(date +%y%m%d%s)"
      then
 	 $environ $command 
       #receive
-     elif [ "$command" == "./acquire.sh" ]
+     elif [ "$command" == "./run.sh" ]
      then
 	 #receive each board
 	 boardslist=`grep dev data_params.txt | awk -F "  " '{print $1}'`
 	 echo " [enter] to proceed starting all boards "
 	 read user_nevents
-	 for board in $boardslist; do
-	     $environ $command $board $default_nevents
-	 done
-       # select
-     elif [ "$command" == "./select" ]
-     then
-	 ## choose selection pattern
-	 $environ chown $user data_params.txt
-	 selection_type="stoppingmuon"
-	 echo " possible patterns = "
-	 ls pattern_*.inp | awk -F "_" '{print $2}' | awk -F ".inp" '{print $1}'
-	 echo " what kind of pattern ? (default = " $selection_type ")"
-	 read a
-	 if [ "$a" != "" ] 
-	 then
-	     selection_type=$a
-	 fi
-	 selection_file="pattern_"$selection_type".inp"
-	 if [ ! -f "$selection_file" ];
-	 then
-	     echo " pattern file " $selection_file " does not exist "
-	     continue
-	 fi
-
-	 $command $selection_file &
-     #convert
-     elif [ "$command" == "root -l convert_data_to_root.C" ]
-     then
-#	$command $selection_file > out_convert.txt 1> out_convert.txt 2> out_convert.txt &
-	$command $selection_file &
-     # view, analyze
-     else
-#	 $command > out_viewer.txt 1> out_viewer.txt 2> out_viewer.txt
-	 $command 
+	 $environ $command $default_nevents $boardslist
      fi
      
  done ## executed all commands
