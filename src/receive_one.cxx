@@ -39,7 +39,7 @@ std::string get_file_number(size_t i){
 std::string sqlInsert(std::string hex){
   std::stringstream ss;
   ss << "INSERT INTO packets VALUES(NULL, '" << hex << "');";
-  // std::cout << "sending command: " << std::endl;
+  //std::cout << "sending command: " << std::endl;
   //std::cout << ss.str() << std::endl;
   //std::cout << std::endl;
   return (ss.str());
@@ -58,11 +58,10 @@ int main(int argc, char *argv[]){
   // initialize parameters
   unsigned int timeout = (unsigned int)read_parameter_from_file("params.inp","timeout");
   bool print = (bool)(read_parameter_from_file("params.inp","print"));
-  // print verbosity
-  size_t n_packets_to_read_together = (size_t)(read_parameter_from_file("params.inp","n_packets_to_read_together")+0.5);
+  // print verbositys  size_t n_packets_to_read_together = (size_t)(read_parameter_from_file("params.inp","n_packets_to_read_together")+0.5);
   string board_address = read_address_from_file("data_params.txt",devicename);
   size_t n_packets_per_file = (size_t)(read_parameter_from_file("params.inp","n_packets_per_file")+0.5);
-
+  size_t n_packets_to_read_together = (size_t)(read_parameter_from_file("params.inp","n_packets_to_read_together")+0.5);
 
   // read all usb devices and get cypress ones
   static vector<libusb_device_handle*> handles;
@@ -111,8 +110,16 @@ int main(int argc, char *argv[]){
   */
 
   //postgresql methods
-  
   pqxx::connection c("user=postgres host=127.0.0.1 password=f dbname=boards");
+  pqxx::work xxx(c); 
+  //droptable
+  //CREATE TABLE board_1( key serial primary key, word text not null);
+  std::stringstream dtable, ctable;
+  dtable << "DROP TABLE board_" << board_address;
+  ctable << "CREATE TABLE board_" << board_address << "( key serial primary key, word text not null)";
+  //xxx.exec((dtable.str()).c_str());	
+  xxx.exec((ctable.str()).c_str());
+  xxx.commit();
 
   /*
   int rc;
@@ -185,9 +192,11 @@ int main(int argc, char *argv[]){
 	  }*/
 
 	txn.exec(
-		 "INSERT into board_1(word) VALUES ("
-		 + txn.quote(*iev) +
-		 ")");	
+		 "INSERT into board_" + 
+		 txn.esc(board_address) + 
+		 "(word) VALUES (" +
+		 txn.quote(*iev) +
+		 ")");
       }
       txn.commit();
       stored_packets.clear();

@@ -1,5 +1,5 @@
 import subprocess, sys, os
-import multiprocessing
+import multiprocessing,time
 
 def intro():
     print '      ************************'
@@ -7,7 +7,7 @@ def intro():
     print '      ************************'
     
 def read_n_events():
-    default = 1000    
+    default = 1000
     try :
         n_evts = int(raw_input("How many events? (default = 100, -1 for continuous): "))
         return n_evts
@@ -32,30 +32,35 @@ def get_boards():
         boards.append(line)
         
     return boards
+
+def execute_receive_one(board,events):
+    #subprocess.call(['sudo','./receive_one&',str(board),str(events),])
+    #things aren't looking good im sry
+    subprocess.call("sudo ./receive_one %s %d &" % (str(board),int(events)), shell=True)
+
 def main():
 
     intro()
     events = read_n_events()
-    continue_with_next_command("setup_daq")
-    subprocess.call(['sudo','./setup_daq'])    
-    boards = [] 
-    continue_with_next_command("receive_one")
-    #just do one board
-    #subprocess.call(['sudo','./receive_one',str(boards[1][0:4]),str(events)])   
-    
-    commands = ['setup_daq','recieve_one']    
+    boards = []
+    jobs=[]
+    commands = ['setup_daq','receive_one','wait']    
     
     for command in commands:
         continue_with_next_command(command)
         if command == 'setup_daq'  : 
             subprocess.call(['sudo','./%s' % command])
             boards = get_boards()
-            
+              
         if command == 'receive_one': 
             for board in boards:
-                subprocess.call(['sudo','./%s' % command ,str(board[0:4]),str(events),])
-        
-        
+                execute_receive_one(board[0:4],events)
+                #seriously what is wrong with multiprocessing???
+                #p = multiprocessing.Process(target=execute_receive_one, args=(board[0:4],events))
+                #jobs.append(p)
+            #for i in jobs:
+            #    i.start()
+
     
     print 'End of %d events.' % events
 
