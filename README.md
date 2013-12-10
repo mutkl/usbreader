@@ -1,3 +1,1 @@
-./configure_boards.sh
-./board.sh
-./clean.sh
+Developed by vic
