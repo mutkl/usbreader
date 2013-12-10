@@ -25,6 +25,7 @@ class Packet {
 private:
   
   std::string packet_;
+  unsigned char* packet_hex_;
   double packet_number_;
   std::string board_address_;  
   std::vector<Event> events_;
@@ -33,6 +34,7 @@ public:
   
   Packet();
   Packet(std::string packet);
+  Packet(unsigned char* packet);
   Packet(std::string packet, bool useless);
   ~Packet();
   
@@ -41,6 +43,8 @@ public:
   void set(std::string packet);
   std::vector<Event> events(){ return events_; }
   std::string packet(){ return packet_; }
+  unsigned char* packet_hex(){ return packet_hex_; }
+  
   double packet_number(){ return packet_number_; }
   std::string board_address(){ return board_address_; }
   

@@ -24,6 +24,14 @@ Packet::Packet(std::string packet)
   packet_=packet;
 }
 
+Packet::Packet(unsigned char* packet)
+{
+  packet_hex_ = packet;
+  events_.clear();
+  packet_number_=0.;
+  board_address_="";
+}
+
 // constructor from HEX string
 Packet::Packet(std::string packet, bool useless)
 {
@@ -32,6 +40,7 @@ Packet::Packet(std::string packet, bool useless)
   packet_number_=0.;
   board_address_="";
 }
+
 
 Packet::~Packet(){}
 

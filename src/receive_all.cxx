@@ -49,19 +49,6 @@ int main(int argc, char *argv[]){
   double _time[MAX_COINCIDENCES_NUMBER];
   int _channels[MAX_COINCIDENCES_NUMBER][LARGE_NUMBER];
   
-  
-  TFile *file      = new TFile("data.root","RECREATE");
-  TTree *data_tree = new TTree("data_tree","ntuple of data");
-  data_tree->Branch("nsignals",&_nsignals,"nsignals/I");
-  data_tree->Branch("nchannels_per_event",(_nchannels_per_event),"nchannels_per_event[nsignals]/I");
-  data_tree->Branch("event_number",(_event_number),"event_number[nsignals]/I");
-  data_tree->Branch("packet_number",(_packet_number),"packet_number[nsignals]/I");
-  data_tree->Branch("type",(_type),"type[nsignals]/O");
-  data_tree->Branch("board_address",(_board_address),"board_address[nsignals]/I");
-  data_tree->Branch("time",(_time),"time[nsignals]/D");
-  data_tree->Branch("channels",(_channels),"channels[nsignals][128]/I");
-
-
   // read all usb devices and get cypress ones
   static std::vector<libusb_device_handle*> handles;
   handles = retrieve_usb_devices();
@@ -192,11 +179,9 @@ int main(int argc, char *argv[]){
 	// int _channels[MAX_COINCIDENCES_NUMBER][LARGE_NUMBER];
 	
       }
+
+
       
-      data_tree->Fill();
-      
-      
-      ;
       
     }
    
@@ -208,16 +193,15 @@ int main(int argc, char *argv[]){
     }
     
     //std::cout << " ip " << ip << std::endl;
-    level.get_actual_event(0).dump();
-    level.get_actual_event(1).dump();
+    //    level.get_actual_event(0).dump();
+    //    level.get_actual_event(1).dump();
   
   
   }
   
-  std::cout << " collected " << ip << " packets " <<std::endl;
-  std::cout << " writting root file" << std::endl;
-  data_tree->Write();
-  file->Close();
+  //std::cout << " collected " << ip << " packets " <<std::endl;
+  //std::cout << " writting root file" << std::endl;
+  
   exit(0);
   
   return 1;

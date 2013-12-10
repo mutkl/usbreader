@@ -1,3 +1,5 @@
+/* -*- mode: c++ -*- */
+
 #ifndef USBFUNCTIONS_H
 #define USBFUNCTIONS_H
 
@@ -14,7 +16,6 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <stdint.h>
-#include <libusb-1.0/libusb.h>
 #include <libusb-1.0/libusb.h>
 #include <usb.h>
 #include "functions_usb.h"
@@ -428,10 +429,43 @@ static vector<libusb_device_handle*> retrieve_usb_devices(){
 
 }
 
-bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet *packet){
-  
+bool read_hex_from_board(libusb_device_handle* handle, double timeout, std::string *packet){
+  std::stringstream ss;
   unsigned char *buf = NULL;
+  buf=(unsigned char*)malloc(NUM_BYTES);
   
+  // read buffer from usb device
+  int t = read(handle,buf,(int)(timeout+0.5));
+  if (t < 0){
+    clog << " timeout has returned value: " << t << endl; fflush(stdout);
+    free(buf);
+    return false;
+  }
+  for (size_t k = 0;k<NUM_BYTES;k++){
+      char b[256];
+      int n = sprintf(b,"%02x",buf[k]);
+      //std::cout << b << " ";
+      // if( ialternate==0){
+      // 	second=convert_hex_to_bin(b);
+      // 	ialternate=1;
+      // }
+      // else{
+      // 	first=convert_hex_to_bin(b);
+      // 	ialternate=0;
+      // 	output += first+second;
+      // }
+      ss << b;
+  }
+  
+  *packet = ss.str();
+  free(buf);
+  return true;
+}
+
+bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet *packet){
+  std::stringstream ss;
+  unsigned char *buf = NULL;
+    
   buf=(unsigned char*)malloc(NUM_BYTES);
   
   // read buffer from usb device
@@ -443,11 +477,9 @@ bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet
   }
   
   // convert hexagonal output to binary
-  string packet_string=hexagonal_to_binary(NUM_BYTES, buf);
-  
-  // decipher packet
+  string packet_string=hexagonal_to_binary(NUM_BYTES, buf); 
+  //decipher packet
   *packet= Packet(packet_string);
-  
   //std::cout << packet_string << std::endl;
   (*packet).packet_to_physical_parameters();
   
@@ -460,11 +492,11 @@ bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet
 }
 
 bool read_raw_packet_from_board(libusb_device_handle* handle, double timeout, Packet * packet){
-  std::cout << "-1" << std::endl; 
+  
   unsigned char *buf = NULL;
-  std::cout << "0" << std::endl; 
+  
   buf=(unsigned char*)malloc(NUM_BYTES); 
-  std::cout << "1" << std::endl; 
+  
   // read buffer from usb device
   int t = read(handle,buf,(int)(timeout+0.5));
   if (t < 0){
@@ -472,14 +504,18 @@ bool read_raw_packet_from_board(libusb_device_handle* handle, double timeout, Pa
     free(buf);
     return false;
   }
-  std::cout << "2" << std::endl;
+  
+  *packet = Packet(buf);
+  
+  /*
   // convert hexagonal output to binary
   string packet_string=hexagonal_to_binary(NUM_BYTES, buf);
-  std::cout << "3" << std::endl;
+  
   *packet = Packet(packet_string);
-  std::cout << "4" << std::endl;
+  
   free(buf);
-  std::cout << "5" << std::endl;
+  */
+  free(buf);
   return true;
 
 }

@@ -4,7 +4,8 @@
 #include "Packet.h"
 #include "Level.h"
 #include <algorithm>
-
+#include <libusb-1.0/libusb.h>
+#include <usb.h>
 
 int main(int argc, char *argv[]){
   std::cout << "start" << std::endl;
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]){
   // open data file for outputting
   ofstream data_params_file;
   data_params_file.open("data_params.txt",ios_base::out);
-  data_params_file << " NUM_BOARDS " << handles.size() << std::endl;
+  //data_params_file << " NUM_BOARDS " << handles.size() << std::endl;
 
 
   // read one packet from each board and find their addresses
