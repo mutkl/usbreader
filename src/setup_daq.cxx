@@ -30,8 +30,7 @@ int main(int argc, char *argv[]){
   // open data file for outputting
   ofstream data_params_file;
   data_params_file.open("data_params.txt",ios_base::out);
-  //data_params_file << " NUM_BOARDS " << handles.size() << std::endl;
-
+  data_params_file << " NUM_BOARDS " << handles.size() << std::endl;
 
   // read one packet from each board and find their addresses
 
@@ -39,11 +38,10 @@ int main(int argc, char *argv[]){
   static libusb_device_handle* handle;
   
   for(int i=handles.size()-1; i>= 0; i--){
-    
     Packet local_packet;
-    
+    std::cout << "12" << std::endl;fflush(stdout);
     bool this_ok = read_packet_from_board(handles[i], timeout, &local_packet);
-    
+    std::cout << "21" << std::endl;
     if( !this_ok ) break;
     std::cout << " device " << i << " has address " << local_packet.board_address() << std::endl;
 
@@ -55,6 +53,8 @@ int main(int argc, char *argv[]){
 	break;
       }
     }
+      
+      
     if( !found ){
       std::cout << " problem: board address not recognized:" << local_packet.board_address() <<  " allowed addresses are: " << std::endl;
       for(std::vector<std::string>::iterator ia=possible_board_addresses.begin(); ia!= possible_board_addresses.end(); ia++){

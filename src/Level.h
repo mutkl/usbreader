@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <float.h>
 #include <algorithm>
-
+#include <pqxx/pqxx>
 
 class Level {
 
@@ -31,6 +31,9 @@ private:
   size_t next_to_minimum_index_;
   double window_;
   Packet stored_packets_[LARGE_NUMBER];
+
+  //db connection
+
   
   std::ifstream in_[LARGE_NUMBER];
   size_t in_number_[LARGE_NUMBER];
@@ -45,7 +48,6 @@ public:
   ~Level();
   
   Packet packets_[100];
-  
   
   
   Event get_event(size_t index);
@@ -76,7 +78,6 @@ public:
   std::string int_to_string(int i);
   std::string get_file_number(size_t i);
   
-  
   void assign_packet(size_t i, Packet p);
   void init(Packet* stored_packets,size_t n);
   void get_earliest_board();
@@ -87,10 +88,13 @@ public:
   bool increase_the_time(){ return increase_the_time_for_board(minimum_index()); }
   
   void delete_file(std::string filename);  
-
+  //  pqxx::connection c(){return c_;}
+  void open_query_psql(std::vector<std::string> names);
   
-  std::string get_current_dir();
+  std::string read_from_db(std::string board,int event);
+  
 
+  std::string get_current_dir();  
   bool fexists(const char *filename);
   bool increase_the_time_for_board(size_t index);
   void set_event_number(size_t ievent, size_t eventnumber);

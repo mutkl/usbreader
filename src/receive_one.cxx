@@ -1,5 +1,5 @@
 /* -*- mode: c++ -*- */
-
+#include <stdio.h>
 #include "usbfunctions.h"
 #include "Word.h"
 #include "Event.h"
@@ -62,7 +62,6 @@ int main(int argc, char *argv[]){
   string board_address = read_address_from_file("data_params.txt",devicename);
   size_t n_packets_per_file = (size_t)(read_parameter_from_file("params.inp","n_packets_per_file")+0.5);
   size_t n_packets_to_read_together = (size_t)(read_parameter_from_file("params.inp","n_packets_to_read_together")+0.5);
-
   // read all usb devices and get cypress ones
   static vector<libusb_device_handle*> handles;
   handles = retrieve_usb_devices();
@@ -90,7 +89,6 @@ int main(int argc, char *argv[]){
     clog << " cannot find board with address " << board_address << " quitting " << endl;
     exit(0);
   }
-
   for(vector<libusb_device_handle*>::iterator ih = handles.begin(); ih!=handles.end(); ++ih){
     if( ih - handles.begin() != index_of_board_with_good_address ){
       libusb_release_interface(*ih,0);
@@ -99,15 +97,6 @@ int main(int argc, char *argv[]){
   }
 
   clog << " freed devices for board " << board_address << endl; fflush(stdout);
-
-  // open data file for outputting
-  /*
-  size_t filenumber=0;
-  string sfilenumber=get_file_number(filenumber);
-  ofstream data_file;
-  string fname = "raw_data_"+board_address+"_"+sfilenumber+".txt";
-  data_file.open(fname.c_str(), ios_base::out);
-  */
 
   //postgresql methods
   pqxx::connection c("user=postgres host=127.0.0.1 password=f dbname=boards");
@@ -121,94 +110,53 @@ int main(int argc, char *argv[]){
   xxx.exec((ctable.str()).c_str());
   xxx.commit();
 
-  /*
-  int rc;
-  char *error;
- 
-  // Open Database
-  cout << "Opening data.db ..." << endl;
-  sqlite3 *db;
-  const char *filename = "board_x_data.db";
-  
-  rc = sqlite3_open(filename, &db);
-  
-  if (rc) {
-    std::cout << "Error opening SQLite3 database: " << sqlite3_errmsg(db) << std::endl;
-    sqlite3_close(db);
-    std::exit(0);
-  }
-  else {
-    std::cout << "Opened board_x_data.db" << std::endl;
-  }
-  cout << "Creating table ..." << endl;
-  const char *sqlCreateTable = "CREATE TABLE packets (id INTEGER PRIMARY KEY, value STRING);";
-  
-  rc = sqlite3_exec(db, sqlCreateTable, NULL, NULL, &error);
-  
-  if (rc) {
-    std::cout<< "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << std::endl;
-    sqlite3_free(error);
-  } else {
-    std::cout << "Created table..." << std::endl;
-  }
-  */
   clog << " will collect " << MAX_NUM_PACKETS << " packets, timeout = " << timeout << ", n of boards: " << handles.size() << ", n of packets to read together = " << n_packets_to_read_together << " from board " << board_address << " write " << n_packets_per_file << " packets per file " << endl; fflush(stdout);
   
   
   // collect and write events
   size_t ip = 0;
   size_t i_together=0;
-  //vector<Packet> stored_packets;
-  vector<std::string> stored_packets;
+  static unsigned int nrt = n_packets_to_read_together;
+  std::string stored_packets[nrt];
   
   //this is the main loop
+  std::string local_packet;
+  pqxx::work txn(c); 
   while( ip < MAX_NUM_PACKETS ){
-    //Packet local_packet;
-    std::string local_packet;
+    local_packet.clear();
     bool this_ok = read_hex_from_board(handle, timeout, &local_packet);
-    //std::cout << local_packet << std::endl;
-    //bool this_ok = read_raw_packet_from_board(handle, timeout, &local_packet);
+ 
     if( !this_ok ) break;
-    stored_packets.push_back(local_packet);
-    
+    stored_packets[i_together] = local_packet;
+    // Packet *p = new Packet(db_hex_to_binary(512,(char*)local_packet.c_str()));
+    //p->packet_to_physical_parameters();
+    //std::cout << "packnum: " << std::setprecision(12) << p->packet_number() << std::endl;
     ip++;
     i_together++;
     
     if( i_together == n_packets_to_read_together ){
       i_together=0;
-      //      for(vector<Packet>::iterator iev=stored_packets.begin(); iev != stored_packets.end(); ++iev){
-      pqxx::work txn(c); 
-      for(vector<std::string>::iterator iev=stored_packets.begin(); iev != stored_packets.end(); ++iev){
-	//iev->Write_raw(data_file);
-	//(*iev).packet_hex();
-	/*
-	  rc = sqlite3_exec(db, sqlInsert((*iev)).c_str(), NULL, NULL, &error);	
-	  if (rc) {
-	  cerr << "Error executing SQLite3 statement: " << sqlite3_errmsg(db) << endl << endl;
-	  sqlite3_free(error);
-	  } else {
-	  ;
-	  //std:: cout << "Inserted a value into packets table." << std::endl;
-	  }*/
-
+            
+      for(size_t i = 0 ;i<nrt;++i){
+	
 	txn.exec(
 		 "INSERT into board_" + 
 		 txn.esc(board_address) + 
 		 "(word) VALUES (" +
-		 txn.quote(*iev) +
+		 txn.quote(stored_packets[i]) +
 		 ")");
-      }
-      txn.commit();
-      stored_packets.clear();
+      
+	stored_packets[i]="";
+      } 
+      
     }
+    
   }
-  /*
-  std::cout << "Closing board_x_data.db ..." << std::endl;
-  sqlite3_close(db);
-  std::cout << "Closed board_x_data.db" << std::endl;
-  */
+  txn.commit();
+  
+ 
   std::cout << "closing psql database" << std::endl;
-  //txn.commit();	
+ 
   std::cout << " collected " << ip << " packets from board " << board_address  << std::endl;
 
   std::exit(0);

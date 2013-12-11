@@ -13,15 +13,18 @@ Packet::Packet()
 // constructor from binary string
 Packet::Packet(std::string packet)
 {
+
   if( packet.size() != NUM_BITS ){
     std::clog << " warning: a packet has length " << packet.size() << " instead of " << NUM_BITS << " packet: " << packet << " stored as: " << packet_ << std::endl;
     std::exit(0);
   }
+  
   events_.clear();
-  packet_number_=0.;
+  packet_number_ = 0.;
   board_address_="";
   
   packet_=packet;
+
 }
 
 Packet::Packet(unsigned char* packet)
@@ -46,7 +49,7 @@ Packet::~Packet(){}
 
 void Packet::dump(){
   
-  std::cout << " packet number " << packet_number() << " board address " << board_address() << " events: " << std::endl;
+  std::cout << " packet number " << std::setprecision(13) << packet_number() << " board address " << board_address() << " events: " << std::endl;
   for(std::vector<Event>::iterator iw=events_.begin(); iw!= events_.end(); ++iw){
     std::cout << " event " << iw - events_.begin() << " :"; iw->dump();
   }
@@ -65,7 +68,7 @@ void Packet::set(std::string packet)
   
 }
 
-void Packet::packet_to_physical_parameters(void){
+void Packet::packet_to_physical_parameters(){
   //x
 
   double dpn = 0; // packet number
@@ -109,7 +112,7 @@ void Packet::packet_to_physical_parameters(void){
     std::exit(0);
   }
   //std::cout << std::endl;
-  std::cout << "5" << std::endl;
+  
   //    std::cout << " board address: ";
   char bad[NUM_BITS_BOARD_ADDRESS];
   for(size_t i=0; i<NUM_BITS_BOARD_ADDRESS; i++){
@@ -117,12 +120,12 @@ void Packet::packet_to_physical_parameters(void){
     //      std::cout << packet_.at(NUM_WORDS_PER_PACKET*NUM_BITS_PER_WORD+58+i);
   }
   board_address_ = std::string(bad,0,NUM_BITS_BOARD_ADDRESS);
-  std::cout << "6" << std::endl;
+  //std::cout << "6" << std::endl;
   for(std::vector<Event>::iterator iev=events_.begin(); iev!=events_.end(); iev++){
     iev->set_packet_number(packet_number());
     iev->set_board_address(board_address());
   }
-  std::cout << "7" << std::endl;
+  //std::cout << "7" << std::endl;
   return;
 }
 

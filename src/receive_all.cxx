@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){
       //Event event = level.get_actual_event();
       //indexes of boards who are in coincidence
       std::cout << " n_coincidences_local " << n_coincidences_local << " min " << n_coincidences << std::endl;
-      
+   
       _nsignals = indexes.size();
 
       std::cout << " _nsignals " << _nsignals << std::endl;

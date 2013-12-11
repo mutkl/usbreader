@@ -104,6 +104,13 @@ void Event::dump (){
   if( type_.compare("SLOW") == 0 )
     std::cout << " slow ";
   
+  std::cout << "t_: " << time_ << " pn " << packet_number_ << "add: "<<  board_address_ << "(";
+  for(auto channel : channels_)
+    {
+      std::cout << " " << channel;
+    }
+  std::cout << ")" << std::endl;
+  
 }
 
 

@@ -180,7 +180,7 @@ void usage()
 
 
 
-string convert_hex_to_bin(char* s){
+string convert_hex_to_bin(char *s){
 
   //  string input(s);
   char output[256];
@@ -332,8 +332,32 @@ bool time_stamp(size_t iword, size_t ichar){
 
 }
 
-string hexagonal_to_binary(int num_bytes, unsigned char *buf){
+string db_hex_to_binary(int num_bytes, char buf[]){
+  string output="";
+  size_t ialternate=0;
+  string first,second;
+  for (size_t k = 0;k<num_bytes;k++)
+    {
+      char b[2] = {(char)buf[2*k],(char)buf[2*k+1]};
 
+      if( ialternate==0){
+	second=convert_hex_to_bin(b);
+	ialternate=1;
+      }
+      else{
+	first=convert_hex_to_bin(b);
+	ialternate=0;
+	output += first+second;
+      }
+      
+    }
+  
+
+  return output;
+}
+
+
+string hexagonal_to_binary(int num_bytes, unsigned char *buf){
   string output="";
   //  clog << " hexagonal: ";
   size_t ialternate=0;
@@ -344,7 +368,7 @@ string hexagonal_to_binary(int num_bytes, unsigned char *buf){
       
       char b[256];
       int n = sprintf(b,"%02x",buf[k]);
-
+      
       if( ialternate==0){
 	second=convert_hex_to_bin(b);
 	ialternate=1;
@@ -430,42 +454,37 @@ static vector<libusb_device_handle*> retrieve_usb_devices(){
 }
 
 bool read_hex_from_board(libusb_device_handle* handle, double timeout, std::string *packet){
-  std::stringstream ss;
+  //std::stringstream ss;
   unsigned char *buf = NULL;
   buf=(unsigned char*)malloc(NUM_BYTES);
   
   // read buffer from usb device
   int t = read(handle,buf,(int)(timeout+0.5));
+
   if (t < 0){
     clog << " timeout has returned value: " << t << endl; fflush(stdout);
     free(buf);
     return false;
   }
+  char bb[1024];
   for (size_t k = 0;k<NUM_BYTES;k++){
-      char b[256];
-      int n = sprintf(b,"%02x",buf[k]);
-      //std::cout << b << " ";
-      // if( ialternate==0){
-      // 	second=convert_hex_to_bin(b);
-      // 	ialternate=1;
-      // }
-      // else{
-      // 	first=convert_hex_to_bin(b);
-      // 	ialternate=0;
-      // 	output += first+second;
-      // }
-      ss << b;
+    char b[256]; 
+    int n = sprintf(b,"%02x",buf[k]); //magic here, std::cout unable to read buf[k]
+    bb[2*k  ] = b[0];
+    bb[2*k+1] = b[1];
+    //    ss << b;
   }
   
-  *packet = ss.str();
+  *packet = (string)bb;
+  //*packet = ss.str();
   free(buf);
   return true;
 }
 
 bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet *packet){
-  std::stringstream ss;
+  //std::stringstream ss;
   unsigned char *buf = NULL;
-    
+
   buf=(unsigned char*)malloc(NUM_BYTES);
   
   // read buffer from usb device
@@ -476,14 +495,10 @@ bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet
     return false;
   }
   
-  // convert hexagonal output to binary
   string packet_string=hexagonal_to_binary(NUM_BYTES, buf); 
-  //decipher packet
   *packet= Packet(packet_string);
-  //std::cout << packet_string << std::endl;
   (*packet).packet_to_physical_parameters();
   
-  //  (*packet).dump();
   free(buf);
   
   
@@ -492,7 +507,7 @@ bool read_packet_from_board(libusb_device_handle* handle, double timeout, Packet
 }
 
 bool read_raw_packet_from_board(libusb_device_handle* handle, double timeout, Packet * packet){
-  
+
   unsigned char *buf = NULL;
   
   buf=(unsigned char*)malloc(NUM_BYTES); 
@@ -505,16 +520,14 @@ bool read_raw_packet_from_board(libusb_device_handle* handle, double timeout, Pa
     return false;
   }
   
-  *packet = Packet(buf);
+    *packet = Packet(buf);
   
-  /*
+    /*
   // convert hexagonal output to binary
   string packet_string=hexagonal_to_binary(NUM_BYTES, buf);
-  
   *packet = Packet(packet_string);
-  
   free(buf);
-  */
+    */
   free(buf);
   return true;
 

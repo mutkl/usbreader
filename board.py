@@ -28,16 +28,19 @@ def continue_with_next_command(command) :
 def get_boards():
     f = open('data_params.txt')
     boards = []
+    cnt = 0;
     for line in f:
-        boards.append(line)
+        if(cnt != 0):
+            boards.append(line)
+        cnt += 1
         
     return boards
 
 def execute_receive_one(board,events):
-    #subprocess.call(['sudo','./receive_one&',str(board),str(events),])
-    #things aren't looking good im sry
-    subprocess.call("sudo ./receive_one %s %d &" % (str(board),int(events)), shell=True)
-
+    #subprocess.call("sudo ./receive_one %s %d &" % (str(board),int(events)), shell=True)
+    #things aren't looking good im sry, subprocess usually works
+    time.sleep(0.01)
+    os.system("sudo ./receive_one %s %d &" % (str(board),int(events)))
 def main():
 
     intro()
@@ -55,7 +58,7 @@ def main():
         if command == 'receive_one': 
             for board in boards:
                 execute_receive_one(board[0:4],events)
-                #seriously what is wrong with multiprocessing???
+                #seriously what is wrong with multiprocessing?
                 #p = multiprocessing.Process(target=execute_receive_one, args=(board[0:4],events))
                 #jobs.append(p)
             #for i in jobs:

@@ -35,7 +35,7 @@ void Level::dump(){
   for(size_t i=0; i<N_; i++){
     std::cout << "[";
     if( get_actual_event(i).written() ) std::cout << "*";
-    std::cout << get_actual_event(i).board_address() << " "  << std::setprecision(12) << get_actual_event(i).time("s");
+    std::cout << get_actual_event(i).board_address() << " "  << std::setprecision(12) << get_actual_event(i).time("s") << " " << get_actual_event(i).packet_number();
     for(size_t j=0; j<get_actual_event(i).channels().size(); j++)
       std::cout << " " << get_actual_event(i).channels()[j];
     std::cout << "]";
@@ -62,7 +62,6 @@ void Level::recalculate_minima(){
   size_t ind=0;
   double next_to_min=FLT_MAX;
   size_t next_to_ind=0;
-    
   for(size_t i=0; i<N_; i++){
     if( get_actual_event(i).time("s") < min ){
       next_to_min = min;
@@ -70,9 +69,11 @@ void Level::recalculate_minima(){
       min = get_actual_event(i).time("s");
       ind=i;
     }
-    else if( get_actual_event(i).time("s") < next_to_min ){
+    else{ 
+      if( get_actual_event(i).time("s") < next_to_min ){
       next_to_min = get_actual_event(i).time("s");
       next_to_ind=i;
+      }
     }
   }
 
@@ -170,17 +171,19 @@ void Level::assign_packet(size_t i, Packet p){
 
   
 void Level::init(Packet* stored_packets,size_t n){
-
   for(size_t i =0 ;i<n;++i){
     assign_packet(i,stored_packets[i]);
+   
   }
   
   for(size_t i = 0 ; i<N_; ++i){
-    actual_event_[i] = stored_packets_[i].events().begin();
+    actual_event_[i] = stored_packets_[i].events_.begin();
+   
   }
-  
+
   recalculate_minima();
   set_time_to_minimum();
+  
 }
 
 void Level::get_earliest_board(){
@@ -207,6 +210,16 @@ void Level::get_earliest_board(){
   
 }
 
+std::string Level::read_from_db(std::string board,int event){
+  return "SELECT word FROM board_" + board + " WHERE key=" + std::to_string(event);
+}
+
+void Level::open_query_psql(std::vector<std::string> names){
+  ;
+  //What do i do?
+  
+  
+}
 
 void Level::open_data_files(std::vector<std::string> names){
   for(size_t i=0; i<N_; i++){
@@ -324,13 +337,11 @@ bool Level::increase_the_time_for_board(size_t index){
   std::vector<Event>::iterator next_event = actual_event_[index];
   next_event++;
 
-  if(next_event == stored_packets_[index].events().end()){
-      
+  if(next_event == stored_packets_[index].events_.end()){
     return false;
-
   }
   actual_event_[index] = next_event;
-    
+  //vic  
   recalculate_minima();
   set_time_to_minimum();
     
@@ -404,8 +415,6 @@ bool Level::board_has_coincidence(size_t iboard, double tzero, bool print){
     
   if( fabs(get_actual_event(iboard).time("s") - tzero) >= window_ ){
     if( print ){
-   
-	
       std::cout << std::setprecision(20) << " time " << get_actual_event(iboard).time("s") << " incompatible with reference time " << std::setprecision(20) <<  tzero << std::endl;
     }
     return false;

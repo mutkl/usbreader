@@ -28,16 +28,18 @@ private:
   unsigned char* packet_hex_;
   double packet_number_;
   std::string board_address_;  
-  std::vector<Event> events_;
+
   
 public:
-  
+
   Packet();
   Packet(std::string packet);
   Packet(unsigned char* packet);
   Packet(std::string packet, bool useless);
   ~Packet();
   
+  std::vector<Event> events_;
+
   void dump();
   
   void set(std::string packet);
