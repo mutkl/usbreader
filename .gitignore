@@ -1,5 +1,7 @@
+a.out
 *.o
 receive_one
 receive_all
 setup_daq
 analyze
+asyn

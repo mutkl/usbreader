@@ -188,6 +188,7 @@ string convert_hex_to_bin(char *s){
   int i;
   string a,b;
 
+  //decoding might be fast with array, map, something here
   for(i=0;i<2;i++)
     {
       if( i == 1 ) a=string(output);

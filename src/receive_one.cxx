@@ -121,7 +121,7 @@ int main(int argc, char *argv[]){
   
   //this is the main loop
   std::string local_packet;
-  pqxx::work txn(c); 
+
   while( ip < MAX_NUM_PACKETS ){
     local_packet.clear();
     bool this_ok = read_hex_from_board(handle, timeout, &local_packet);
@@ -135,8 +135,9 @@ int main(int argc, char *argv[]){
     i_together++;
     
     if( i_together == n_packets_to_read_together ){
+      pqxx::work txn(c); 
       i_together=0;
-            
+      
       for(size_t i = 0 ;i<nrt;++i){
 	
 	txn.exec(
@@ -145,14 +146,13 @@ int main(int argc, char *argv[]){
 		 "(word) VALUES (" +
 		 txn.quote(stored_packets[i]) +
 		 ")");
-      
+	
 	stored_packets[i]="";
       } 
-      
+      txn.commit();
     }
     
   }
-  txn.commit();
   
  
   std::cout << "closing psql database" << std::endl;

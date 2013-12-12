@@ -297,7 +297,147 @@ void print_usb_devices(){
 
 }
 
+libusb_device_handle *cypress(int vendor_id, int product_id,   uint32_t timeout,   uint32_t nbyte  ){
+  // returns the endpoint of requested usb device
 
+  libusb_device **devs; //pointer to list of devices
+  libusb_context *ctx = NULL; //a libusb session
+  int r; //for return values
+  ssize_t cnt; //holding number of devices in list
+  int EP = 0;
+
+  r = libusb_init(&ctx); //initialize a library session
+  if(r < 0) {
+    cout<<" problem: init error "<< r <<endl;
+    libusb_exit(ctx); 
+    //return EP;
+  }
+
+  libusb_set_debug(ctx, 3); 
+
+
+  cnt = libusb_get_device_list(ctx, &devs);
+  if(cnt < 0) {
+    cout<<" proble: get device error" << cnt << endl; //there was an error
+    libusb_free_device_list(devs, 1); 
+    libusb_exit(ctx); 
+    //return EP;
+  }
+
+
+
+  bool found = false;
+  ssize_t cypress_index;
+  for(ssize_t i = 0; i < cnt; i++) {
+    libusb_device_descriptor desc;
+    int r = libusb_get_device_descriptor(devs[i], &desc);
+    if (r < 0) {
+      continue;
+    }
+
+    if( desc.idVendor == vendor_id && desc.idProduct == product_id ){
+      cypress_index = i;
+      found = true;
+      break;
+    }
+  }
+
+  if( !found ) {
+    cout << " warning: I could not find a usb device with product id " << product_id << " and vendor id " << vendor_id << endl;
+    libusb_free_device_list(devs, 1); 
+    libusb_exit(ctx); 
+    //return EP;
+  }
+
+  
+  libusb_device_handle *cypress_handle = libusb_open_device_with_vid_pid(ctx, vendor_id, product_id); 
+  
+  if(cypress_handle == NULL || cypress_handle == 0 ){
+    cout<<" warning: cannot open device with product id " << product_id << " and vendor id " << vendor_id << endl;
+    libusb_free_device_list(devs, 1);
+    libusb_exit(ctx);
+    //return EP;
+  }
+
+
+  cout << " device with product id " << product_id << " and vendor id " << vendor_id << " has been found " << endl;
+  print_device(devs[cypress_index]);
+  get_endpoint_of_device(devs[cypress_index], &EP);
+  unsigned char cEP = EP;
+  cout << " the endpoint is found to be " << EP << endl; fflush(stdout);
+  return cypress_handle;
+  
+}
+int endpoint(int vendor_id, int product_id,   uint32_t timeout,   uint32_t nbyte){
+  
+  libusb_device **devs; //pointer to list of devices
+  libusb_context *ctx = NULL; //a libusb session
+  int r; //for return values
+  ssize_t cnt; //holding number of devices in list
+  int EP = 0;
+
+  r = libusb_init(&ctx); //initialize a library session
+  if(r < 0) {
+    cout<<" problem: init error "<< r <<endl;
+    libusb_exit(ctx); 
+    return EP;
+  }
+
+  libusb_set_debug(ctx, 3); 
+
+
+  cnt = libusb_get_device_list(ctx, &devs);
+  if(cnt < 0) {
+    cout<<" proble: get device error" << cnt << endl; //there was an error
+    libusb_free_device_list(devs, 1); 
+    libusb_exit(ctx); 
+    return EP;
+  }
+
+
+
+  bool found = false;
+  ssize_t cypress_index;
+  for(ssize_t i = 0; i < cnt; i++) {
+    libusb_device_descriptor desc;
+    int r = libusb_get_device_descriptor(devs[i], &desc);
+    if (r < 0) {
+      continue;
+    }
+
+    if( desc.idVendor == vendor_id && desc.idProduct == product_id ){
+      cypress_index = i;
+      found = true;
+      break;
+    }
+  }
+
+  if( !found ) {
+    cout << " warning: I could not find a usb device with product id " << product_id << " and vendor id " << vendor_id << endl;
+    libusb_free_device_list(devs, 1); 
+    libusb_exit(ctx); 
+    return EP;
+  }
+
+  
+  libusb_device_handle *cypress_handle = libusb_open_device_with_vid_pid(ctx, vendor_id, product_id); 
+  
+  if(cypress_handle == NULL || cypress_handle == 0 ){
+    cout<<" warning: cannot open device with product id " << product_id << " and vendor id " << vendor_id << endl;
+    libusb_free_device_list(devs, 1);
+    libusb_exit(ctx);
+    return EP;
+  }
+
+
+  cout << " device with product id " << product_id << " and vendor id " << vendor_id << " has been found " << endl;
+  print_device(devs[cypress_index]);
+  get_endpoint_of_device(devs[cypress_index], &EP);
+  unsigned char cEP = EP;
+  cout << " the endpoint is found to be " << EP << endl; fflush(stdout);
+
+  return EP;
+}
 int libusb_speak_to_cypress(int vendor_id, int product_id,   uint32_t timeout,   uint32_t nbyte  ){
   // returns the endpoint of requested usb device
 
@@ -350,9 +490,9 @@ int libusb_speak_to_cypress(int vendor_id, int product_id,   uint32_t timeout,  
     return EP;
   }
 
-
+  
   libusb_device_handle *cypress_handle = libusb_open_device_with_vid_pid(ctx, vendor_id, product_id); 
-
+  
   if(cypress_handle == NULL || cypress_handle == 0 ){
     cout<<" warning: cannot open device with product id " << product_id << " and vendor id " << vendor_id << endl;
     libusb_free_device_list(devs, 1);
@@ -374,7 +514,7 @@ int libusb_speak_to_cypress(int vendor_id, int product_id,   uint32_t timeout,  
   
   if(libusb_kernel_driver_active(cypress_handle, 0) == 1) { 
     //find out if kernel driver is attached
-    cout<<" kernel driver is active "<<endl;
+    cout<<" k]ernel driver is active "<<endl;
     if(libusb_detach_kernel_driver(cypress_handle, 0) == 0) 
       //detach it
       cout<<" kernel driver has been detached "<<endl;
@@ -402,8 +542,8 @@ int libusb_speak_to_cypress(int vendor_id, int product_id,   uint32_t timeout,  
   
   cout<<" data we are going to write: ->" << data << "<- " << endl; fflush(stdout);
   //just to see the data we want to write : abcd
-  r = libusb_bulk_transfer(cypress_handle, EP, data, 4, &xfer, 0);
-  cout << " bulk transfer writing returns value: " << r   << " xfer " << xfer << endl; fflush(stdout);
+  //r = libusb_bulk_transfer(cypress_handle, EP, data, 4, &xfer, 0);
+  //cout << " bulk transfer writing returns value: " << r   << " xfer " << xfer << endl; fflush(stdout);
 
   
   r = libusb_release_interface(cypress_handle, 0); //release the claimed interface
